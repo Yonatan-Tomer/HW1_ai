@@ -58,7 +58,7 @@ class OnePieceProblem(search.Problem):
     """Feel free to add your own functions
     (-2, -2, None) means there was a timeout"""
 
-    def sail_actions(self, ships):#todo complete
+    def sail_actions(self, ships):
 
         for ship in ships:
             loc = ship["location"]
@@ -73,6 +73,7 @@ class OnePieceProblem(search.Problem):
                     yield
             if not loc[1] == len(self.map[0])-1:  #right
                 if self.map[loc[0]+1][loc[1]] == 'S':
+                    yield
 
     def collect_actions(self, ships):
         for ship in ships:
