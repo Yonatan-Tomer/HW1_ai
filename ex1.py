@@ -62,7 +62,7 @@ class OnePieceProblem(search.Problem):
 
         for ship in ships:
             loc = ship["location"]
-            if not loc[0] == 0:  #up
+            if not loc[0] == 0:  # up
                 if self.map[loc[0]][loc[1]-1] == 'S':
                     yield
             if not loc[0] == len(self.map)-1:  # down
@@ -79,24 +79,17 @@ class OnePieceProblem(search.Problem):
         for ship in ships:
             for treasure in self.treasures:
                 if abs(ship["location"][0] - self.treasures[treasure][0]) == 1 and\
-                    ship["location"][1] - self.treasures[treasure][1] == 0:
+                   ship["location"][1] - self.treasures[treasure][1] == 0:
                     yield
                 if abs(ship["location"][1] - self.treasures[treasure][1]) == 1 and\
                     ship["location"][0] - self.treasures[treasure][0] == 0:
                     yield
-
 
     def deposit_actions(self, ships):
         for ship in ships:
             if ship["location"][0] - self.base[0] == 0 and \
                     ship["location"][1] - self.base[1] == 0:
                 yield
-
-
-
-
-
-
 
 
 def create_onepiece_problem(game):
