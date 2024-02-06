@@ -71,7 +71,7 @@ class OnePieceProblem(search.Problem):
             if not loc[1] == 0:  # left
                 if self.map[loc[0]-1][loc[1]] == 'S':
                     yield
-            if not loc[1] == len(self.map[0])-1:  #right
+            if not loc[1] == len(self.map[0])-1:  # right
                 if self.map[loc[0]+1][loc[1]] == 'S':
                     yield
 
