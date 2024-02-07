@@ -149,7 +149,6 @@ def astar_search(problem, h=None):
     # Memoize this function for better performance
     f = memoize(lambda n: n.path_cost + h(n), 'f')
 
-    # TODO: Implement the rest of the A* search algorithm
     return best_first_graph_search(problem, f)
 
 
