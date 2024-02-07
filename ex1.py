@@ -22,6 +22,7 @@ class OnePieceProblem(search.Problem):
         #self.pirate_ships = {}  # list of all ships and treasures they have onboard
         #for ship in initial["pirate_ships"]:
             #self.pirateShips[ship] = {"location": initial["pirate_ships"][ship], "treasures": []}
+        self.pirates = initial["pirate_ships"]
         self.treasures = initial["treasures"]  # treasures as is in initial
         self.marine_ships = initial["marine_ships"]  #marine ships as is in initial
         search.Problem.__init__(self, initial)
@@ -44,7 +45,7 @@ class OnePieceProblem(search.Problem):
         """Return the state that results from executing the given
         action in the given state. The action must be one of
         self.actions(state)."""
-        next_state = state
+        next_state = {"ships": state["ships"], "marines": state["marines"]}
         for atomic_action in action:
             if atomic_action[0] == "sail":
                 next_state["ships"][atomic_action[1]]["location"] = atomic_action[2]
@@ -56,9 +57,10 @@ class OnePieceProblem(search.Problem):
 
         for name, location in next_state["marines"].items():
             if location == len(self.marine_ships[name])-1:
-                location == 0
+                location = 0
             else:
                 location += 1
+            next_state["marines"][name] = location
 
         for pirate_name, pirate_data in next_state["ships"].items():
             for marine_name, marine_location in next_state["marines"].items:
@@ -77,6 +79,23 @@ class OnePieceProblem(search.Problem):
         state can be accessed via node.state)
         and returns a goal distance estimate"""
         return 0
+
+    def h1(self, node):
+        """ number of uncollected treasures divided by number of pirates"""
+        num_of_pirates = len(self.pirates)
+        ships = node.state["ships"]
+        num_of_treasures = set()
+        for ship in ships.keys():
+            num_of_treasures.update(ships[ship]["treasure"])
+        overall_treasure = num_of_treasures.union(self.treasure_in_base)
+        return float(len(self.treasures) - len(overall_treasure)) / num_of_pirates
+
+    def h2(self, node):
+        """ Sum of the distances from the pirate base to the closest sea
+         cell adjacent to a treasure - for each treasure, divided by the
+          number of pirates. If there is a treasure which all the adjacent
+          cells are islands – return infinity. """
+
 
     """Feel free to add your own functions
     (-2, -2, None) means there was a timeout"""
@@ -100,7 +119,7 @@ class OnePieceProblem(search.Problem):
 
     def collect_actions(self, ships):
         for ship in ships:
-            if len(ship[treasure]) < 3:
+            if len(ship["treasure"]) < 3:
                 for treasure in self.treasures:
                     if abs(ship["location"][0] - self.treasures[treasure][0]) == 1 and\
                        ship["location"][1] - self.treasures[treasure][1] == 0:
@@ -118,4 +137,3 @@ class OnePieceProblem(search.Problem):
 
 def create_onepiece_problem(game):
     return OnePieceProblem(game)
-

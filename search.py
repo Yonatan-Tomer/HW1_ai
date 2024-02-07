@@ -3,7 +3,7 @@
 The way to use this code is to subclass Problem to create a class of problems,
 then create problem instances and solve them with calls to the various search
 functions."""
-
+import utils
 from utils import (
     is_in, argmin, argmax, argmax_random_tie, probability, weighted_sampler,
     memoize, print_table, open_data, Stack, FIFOQueue, PriorityQueue, name,
@@ -150,5 +150,21 @@ def astar_search(problem, h=None):
     f = memoize(lambda n: n.path_cost + h(n), 'f')
 
     # TODO: Implement the rest of the A* search algorithm
+    return best_first_graph_search(problem, f)
 
+
+def best_first_graph_search(problem, f):
+    return graph_search(problem, utils.PriorityQueue(f))
+
+
+def graph_search(problem, fringe):
+    closed = {}
+    fringe.append(Node(problem.initial))
+    while fringe:
+        node = fringe.pop()
+        if problem.goal_test(node.state):
+            return node
+        if node.state not in closed:
+            closed[node.state] = True
+            fringe.extend(node.expand(problem))
     return None
