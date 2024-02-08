@@ -59,11 +59,11 @@ def solve_problems(problems):
             p = ex1.create_onepiece_problem(problem)
         except Exception as e:
             print("Error creating problem: ", e)
-            #raise e
+            raise e
             return None
         timeout = 60
         result = check_problem(
-            p, (lambda p: search.astar_search(p, p.h)), timeout)
+            p, (lambda p_: search.astar_search(p_, p_.h)), timeout)
         print("A* ", result)
         if result[2] != None:
             if result[0] != -3:
