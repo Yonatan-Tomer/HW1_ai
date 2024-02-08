@@ -68,7 +68,6 @@ def solve_problems(problems):
         if result[2] != None:
             if result[0] != -3:
                 solved = solved + 1
-        break
 
 
 def main():

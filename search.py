@@ -161,7 +161,6 @@ def graph_search(problem, fringe):
     fringe.append(Node(problem.initial))
     while fringe:
         node = fringe.pop()
-        print(node.state)
         if problem.goal_test(node.state):
             return node
         if node.state not in closed:

@@ -125,19 +125,19 @@ class OnePieceProblem(search.Problem):
         loc = ship
         # sail actions
         if not loc[0] == 0:  # up
-            if self.map[loc[0]-1][loc[1]] == 'S':
+            if self.map[loc[0]-1][loc[1]] != 'I':
                 action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]-1, loc[1]))
                 yield action
         if not loc[0] == len(self.map) - 1:  # down
-            if self.map[loc[0]+1][loc[1]] == 'S':
+            if self.map[loc[0]+1][loc[1]] != 'I':
                 action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]+1, loc[1]))
                 yield action
         if not loc[1] == 0:  # left
-            if self.map[loc[0]][loc[1]-1] == 'S':
+            if self.map[loc[0]][loc[1]-1] != 'I':
                 action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]-1))
                 yield action
         if not loc[1] == len(self.map[0]) - 1:  # right
-            if self.map[loc[0]][loc[1]+1] == 'S':
+            if self.map[loc[0]][loc[1]+1] != 'I':
                 action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]+1))
                 yield action
 
