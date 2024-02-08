@@ -60,18 +60,18 @@ class OnePieceProblem(search.Problem):
         list_state = list(state)
         ships = list(list_state[0])
         marines = list(list_state[1])
-        treasures = list(list_state[2])
+        treasures_ = list(list_state[2])
         for atomic_action in action:
             ship_num = int(atomic_action[1][-1])-1
             if atomic_action[0] == "sail":
                 ships[ship_num] = atomic_action[2]
             if atomic_action[0] == "deposit":
-                for i in range(len(treasures)):
-                    if treasures[i] == ship_num+1:
-                        treasures[i] = 0
+                for i in range(len(treasures_)):
+                    if treasures_[i] == ship_num+1:
+                        treasures_[i] = 0
             if atomic_action[0] == "collect":
                 treasure_num = int(atomic_action[2][-1])-1
-                treasures[treasure_num] = ship_num+1
+                treasures_[treasure_num] = ship_num+1
 
         for i in range(len(self.marine_ships)):
             if marines[i] == len(self.marine_ships[i])-1:
@@ -82,10 +82,10 @@ class OnePieceProblem(search.Problem):
         for i in range(len(ships)):
             for j in range(len(marines)):
                 if self.marine_ships[j][marines[j]] == ships[i]:
-                    for k in range(len(treasures)):
-                        if treasures[k] == i+1:
-                            treasures[k] = -1
-        next_state = (tuple(ships), tuple(marines), tuple(treasures))
+                    for k in range(len(treasures_)):
+                        if treasures_[k] == i+1:
+                            treasures_[k] = -1
+        next_state = (tuple(ships), tuple(marines), tuple(treasures_))
         return next_state
 
     def goal_test(self, state):
@@ -100,7 +100,7 @@ class OnePieceProblem(search.Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
-        return self.h1(node)
+        return 0
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
