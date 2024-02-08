@@ -59,6 +59,7 @@ def solve_problems(problems):
             p = ex1.create_onepiece_problem(problem)
         except Exception as e:
             print("Error creating problem: ", e)
+            #raise e
             return None
         timeout = 60
         result = check_problem(
@@ -67,6 +68,7 @@ def solve_problems(problems):
         if result[2] != None:
             if result[0] != -3:
                 solved = solved + 1
+        break
 
 
 def main():

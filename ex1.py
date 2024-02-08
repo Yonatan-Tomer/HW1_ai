@@ -1,6 +1,9 @@
+import itertools
+
 import search
 import random
 import math
+from itertools import product
 
 
 ids = ["325028967", "213125164"]
@@ -16,13 +19,25 @@ class OnePieceProblem(search.Problem):
         for i, row in enumerate(initial["map"]):  # find base location
             for j, loc in enumerate(row):
                 if loc == "B":
-                    self.base = tuple(i, j)
+                    self.base = (i, j)
         self.map = initial["map"]  # map as is in initial
         self.pirates = initial["pirate_ships"]
+
         self.num_of_pirates = len(self.pirates)
-        self.treasures = initial["treasures"].values()
-        self.marine_ships = initial["marine_ships"].values()
-        search.Problem.__init__(self, initial)
+        self.treasures = initial["treasures"].items()
+        marines = list(initial["marine_ships"].values())
+        for i in range(len(marines)):
+            if len(marines[i]) > 1:
+                ret_path = []
+                for j in marines[i][-2:0:-1]:
+                    ret_path.append(j)
+                marines[i] += ret_path
+        self.marine_ships = marines
+        marines_state = tuple(0 for i in range(len(self.marine_ships)))
+        pirate_state = tuple(self.pirates.values())
+        treasure_state = tuple(-1 for i in range(len(self.treasures)))
+        initial_state = (pirate_state, marines_state, treasure_state)
+        search.Problem.__init__(self, initial_state)
         
     def actions(self, state):
         """Returns all the actions that can be executed in the given
@@ -31,13 +46,12 @@ class OnePieceProblem(search.Problem):
         # state = (ships=(loc),marines=(loc),treasures=())
         ships = state[0]
         treasures = state[2]
-        # sail
+        generators = []
+        for i in range(len(ships)):
+            generators.append(self.atomic_action(i, ships[i], treasures))
 
-        # collect
-
-        # deposit
-
-        # wait
+        for action in itertools.product(*generators):
+            yield action
 
     def result(self, state, action):
         """Return the state that results from executing the given
@@ -63,7 +77,7 @@ class OnePieceProblem(search.Problem):
             if marines[i] == len(self.marine_ships[i])-1:
                 marines[i] = 0
             else:
-                marines[i] += 1
+                marines[i] = marines[i]+1
 
         for i in range(len(ships)):
             for j in range(len(marines)):
@@ -71,8 +85,8 @@ class OnePieceProblem(search.Problem):
                     for k in range(len(treasures)):
                         if treasures[k] == i+1:
                             treasures[k] = -1
-
-        return tuple(tuple(ships), tuple(marines), tuple(treasures))
+        next_state = (tuple(ships), tuple(marines), tuple(treasures))
+        return next_state
 
     def goal_test(self, state):
         """ Given a state, checks if this is the goal state.
@@ -86,65 +100,122 @@ class OnePieceProblem(search.Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
-        return 0
+        return self.h1(node)
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
-        num_of_pirates = len(self.pirates)
-        treasures = node.state[2]
+        treasures_ = node.state[2]
         counter = 0
-        for treasure in treasures:
+        for treasure in treasures_:
             if treasure != 0:
                 counter += 1
-        return float(counter) / num_of_pirates
+        return float(counter) / self.num_of_pirates
 
     def h2(self, node):
         """ Sum of the distances from the pirate base to the closest sea
          cell adjacent to a treasure - for each treasure, divided by the
           number of pirates. If there is a treasure which all the adjacent cells are islands – return infinity. """
+        state = node.state
 
 
     """Feel free to add your own functions
     (-2, -2, None) means there was a timeout"""
 
-    def sail_actions(self, ships):
+    def atomic_action(self, i, ship, treasures_):
+        loc = ship
+        # sail actions
+        if not loc[0] == 0:  # up
+            if self.map[loc[0]-1][loc[1]] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]-1, loc[1]))
+                yield action
+        if not loc[0] == len(self.map) - 1:  # down
+            if self.map[loc[0]+1][loc[1]] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]+1, loc[1]))
+                yield action
+        if not loc[1] == 0:  # left
+            if self.map[loc[0]][loc[1]-1] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]-1))
+                yield action
+        if not loc[1] == len(self.map[0]) - 1:  # right
+            if self.map[loc[0]][loc[1]+1] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]+1))
+                yield action
 
-        for i in range(len(ships)):
-            loc = ships[i]
-            if not loc[0] == 0:  # up
-                if self.map[loc[0]][loc[1]-1] == 'S':
-                    yield
-            if not loc[0] == len(self.map)-1:  # down
-                if self.map[loc[0]][loc[1]+1] == 'S':
-                    yield
-            if not loc[1] == 0:  # left
-                if self.map[loc[0]-1][loc[1]] == 'S':
-                    yield
-            if not loc[1] == len(self.map[0])-1:  # right
-                if self.map[loc[0]+1][loc[1]] == 'S':
-                    yield
+        # collect actions
+        counter = 0
+        space = True
+        for j in treasures_:
+            if j == i + 1:
+                counter += 1
+            if counter == 2:
+                space = False
+                break
+        if space:
+            for name, loc in self.treasures:
+                if abs(ship[0] - loc[0]) == 1 and \
+                        ship[1] - loc[1] == 0:
+                    action = ("collect", "pirate_ship_" + str(i + 1), name)
+                    yield action
+                elif abs(ship[1] - loc[1]) == 1 and \
+                        ship[0] - loc[0] == 0:
+                    action = ("collect", "pirate_ship_" + str(i + 1), name)
+                    yield action
+        # deposit and wait actions
+        if ship[0] - self.base[0] == 0 and \
+                ship[1] - self.base[1] == 0:
+            action = ("deposit", "pirate_ship_" + str(i + 1))
+            yield action
+        action = ("wait", "pirate_ship_" + str(i + 1))
+        yield action
 
-    def collect_actions(self, ships, treasures):
-        for i in range(len(ships)):
-            counter = 0
-            for j in treasures:
-                if treasures[j] == i+1:
-                    counter += 1
-                if counter == 2:
-                    return
+    def sail_actions(self, i, ship):
+
+        loc = ship
+        # sail actions
+        if not loc[0] == 0:  # up
+            if self.map[loc[0]][loc[1]-1] == 'S':
+                action = ("sail", "pirate_ship_"+str(i+1), (loc[0], loc[1]-1))
+                yield action
+        if not loc[0] == len(self.map)-1:  # down
+            if self.map[loc[0]][loc[1]+1] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1] + 1))
+                yield action
+        if not loc[1] == 0:  # left
+            if self.map[loc[0]-1][loc[1]] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]-1, loc[1]))
+                yield action
+        if not loc[1] == len(self.map[0])-1:  # right
+            if self.map[loc[0]+1][loc[1]] == 'S':
+                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]+1, loc[1]))
+                yield action
+
+    def collect_actions(self, i,  ship, treasures):
+        counter = 0
+        space = True
+        for j in treasures:
+            if treasures[j] == i+1:
+                counter += 1
+            if counter == 2:
+                space = False
+        if space:
             for treasure in self.treasures:
-                if abs(ships[i][0] - treasure[0]) == 1 and\
-                   ships[i][1] - treasure[1] == 0:
-                    yield
-                if abs(ships[i][1] - treasure[1]) == 1 and\
-                   ships[i][0] - treasure[0] == 0:
-                    yield
+                if abs(ship[0] - treasure[0]) == 1 and\
+                   ship[1] - treasure[1] == 0:
+                    action = ("collect", "pirate_ship_" + str(i + 1), treasure)
+                    yield action
+                elif abs(ship[1] - treasure[1]) == 1 and\
+                        ship[0] - treasure[0] == 0:
+                    action = ("collect", "pirate_ship_" + str(i + 1), treasure)
+                    yield action
 
-    def deposit_actions(self, ships):
-        for i in range(len(ships)):
-            if ships[i][0] - self.base[0] == 0 and \
-                    ships[i][1] - self.base[1] == 0:
-                yield
+    def deposit_wait_actions(self, i, ship):
+
+        if ship[0] - self.base[0] == 0 and \
+                ship[1] - self.base[1] == 0:
+            action = ("deposit", "pirate_ship_" + str(i+1))
+            yield action
+        action = ("wait", "pirate_ship_"+ str(i+1))
+        yield action
 
 
 def create_onepiece_problem(game):

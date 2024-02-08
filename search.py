@@ -107,10 +107,10 @@ class Node:
 
     def child_node(self, problem, action):
         """[Figure 3.10]"""
-        next = problem.result(self.state, action)
-        return Node(next, self, action,
+        next_state = problem.result(self.state, action)
+        return Node(next_state, self, action,
                     problem.path_cost(self.path_cost, self.state,
-                                      action, next))
+                                      action, next_state))
 
     def solution(self):
         """Return the sequence of actions to go from the root to this node."""
@@ -161,6 +161,7 @@ def graph_search(problem, fringe):
     fringe.append(Node(problem.initial))
     while fringe:
         node = fringe.pop()
+        print(node.state)
         if problem.goal_test(node.state):
             return node
         if node.state not in closed:
