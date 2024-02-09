@@ -153,7 +153,7 @@ def astar_search(problem, h=None):
 
 
 def best_first_graph_search(problem, f):
-    return graph_search(problem, utils.PriorityQueue(f))
+    return graph_search(problem, utils.PriorityQueue(f=f))
 
 
 def graph_search(problem, fringe):
