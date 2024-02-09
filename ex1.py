@@ -3,7 +3,6 @@ import itertools
 import search
 import random
 import math
-from utils import distance
 
 
 ids = ["325028967", "213125164"]
@@ -113,14 +112,47 @@ class OnePieceProblem(search.Problem):
         """ This is the heuristic. It gets a node (not a state,
         state can be accessed via node.state)
         and returns a goal distance estimate"""
-        return self.h2(node)
+        if self.check_impossible():
+            return float('inf')
+        state = node.state
+        ships = state[0]
+        treasures_ = state[2]
+        sum_of_dist = 0
+        treasure_in_ships = [0]*len(ships)
+        uncollected = []
+        for i in range(len(treasures_)):
+            if 0 not in treasures_[i]:
+                if treasures_[i][0] != -1:
+                    for ship in treasures_[i]:
+                        treasure_in_ships[ship-1] += 1
+                else:
+                    uncollected.append(i)
+        uncollected_locations = []
+
+        for name, loc in self.treasures:
+            if (int(name[-1]))-1 in uncollected:
+                uncollected_locations.append(loc)
+        for i, treasure_amount in enumerate(treasure_in_ships):
+            if treasure_amount == 2 or (treasure_amount == 1 and len(uncollected) == 0):
+                sum_of_dist += l1(ships[i], self.base)
+            elif treasure_amount == 1:
+                if len(uncollected) > 0:
+                    dist_to_treasure = min(l1(ships[i], j)+l1(j, self.base) for j in uncollected_locations)
+                    if self.num_of_pirates == 1:
+                        sum_of_dist += dist_to_treasure
+                    else:
+                        sum_of_dist += min(dist_to_treasure, l1(self.base, ships[i]))
+            else:
+                if len(uncollected) > 0:
+                    sum_of_dist += min(l1(ships[i], j)+l1(j, self.base) for j in uncollected_locations)
+        return sum_of_dist/self.num_of_pirates
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
         treasures_ = node.state[2]
         counter = 0
         for treasure in treasures_:
-            if -1 not in treasure:
+            if -1 in treasure:
                 counter += 1
         return float(counter) / self.num_of_pirates
 
@@ -153,12 +185,12 @@ class OnePieceProblem(search.Problem):
                             if not loc[1] == len(self.map[0]) - 1:  # right
                                 if self.map[loc[0]][loc[1]+1] != 'I':
                                     check.append((loc[0], loc[1]+1))
-                            sum_of_dist += min(distance(self.base, k) for k in check)
+                            sum_of_dist += min(l1(self.base, k) for k in check)
 
                 elif len(treasures_[i]) == 1:
-                    sum_of_dist += distance(ships[treasures_[i][0]-1], self.base)
+                    sum_of_dist += l1(ships[treasures_[i][0]-1], self.base)
                 elif len(treasures_[i]) > 1:
-                    sum_of_dist += min(distance(ships[k-1], self.base) for k in treasures_[i])
+                    sum_of_dist += min(l1(ships[k-1], self.base) for k in treasures_[i])
         return float(sum_of_dist)/self.num_of_pirates
 
 
@@ -231,6 +263,13 @@ class OnePieceProblem(search.Problem):
                     continue
             return True
         return False
+
+
+def l1(a, b):
+    xa, ya = a
+    xb, yb = b
+    dist = abs(xa-xb)+abs(ya-yb)
+    return dist
 
 
 def create_onepiece_problem(game):
