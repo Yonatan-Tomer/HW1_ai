@@ -204,7 +204,7 @@ def main():
                              'marine_3': [(1, 2), (1, 3), (1, 4)], 'marine_4': [(5, 6)]},
         },
     ]
-    solve_problems(problems+problems_2)
+    solve_problems(problems + problems_2)
 
 
 if __name__ == '__main__':

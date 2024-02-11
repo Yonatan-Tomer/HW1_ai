@@ -109,6 +109,9 @@ class OnePieceProblem(search.Problem):
         return True
 
     def h(self, node):
+        return max(self.h2(node)*self.num_of_pirates, self.h4(node))
+
+    def h4(self, node):
         if self.check_impossible():
             return float('inf')
         state = node.state
@@ -140,7 +143,7 @@ class OnePieceProblem(search.Problem):
             for loc in uncollected_locations:
                 if len(space_locations) > 0:
                     sum_of_dist += l1(self.base, loc) + min(l1(loc, ship) for ship in space_locations)
-        return sum_of_dist/self.num_of_pirates
+        return float(sum_of_dist)
 
     def h3(self, node):
         """ This is the heuristic. It gets a node (not a state,
@@ -179,7 +182,7 @@ class OnePieceProblem(search.Problem):
             else:
                 if len(uncollected) > 0:
                     sum_of_dist += min(l1(ships[i], j)+l1(j, self.base) for j in uncollected_locations)
-        return float(sum_of_dist)/self.num_of_pirates
+        return sum_of_dist
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
