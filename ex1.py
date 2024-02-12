@@ -19,11 +19,17 @@ class OnePieceProblem(search.Problem):
             for j, loc in enumerate(row):
                 if loc == "B":
                     self.base = (i, j)
+        self.ship_to_index = {}
+        self.treasure_to_index = {}
         self.map = initial["map"]  # map as is in initial
         self.pirates = initial["pirate_ships"]
+        for i, key in enumerate(self.pirates.keys()):
+            self.ship_to_index[i] = key
 
         self.num_of_pirates = len(self.pirates)
         self.treasures = list(initial["treasures"].items())
+        for i, item in enumerate(self.treasures):
+            self.treasure_to_index[i] = item[0]
         marines = list(initial["marine_ships"].values())
         for i in range(len(marines)):
             if len(marines[i]) > 1:
@@ -36,6 +42,7 @@ class OnePieceProblem(search.Problem):
         pirate_state = tuple(self.pirates.values())
         treasure_state = tuple((-1,) for i in range(len(self.treasures)))
         initial_state = (pirate_state, marines_state, treasure_state)
+        self.impossible = check_impossible(self.treasures, self.map)
         search.Problem.__init__(self, initial_state)
         
     def actions(self, state):
@@ -60,8 +67,14 @@ class OnePieceProblem(search.Problem):
         ships = list(list_state[0])
         marines = list(list_state[1])
         treasures_ = list(list_state[2])
+        ship_num = 0
+        treasure_num = 0
         for atomic_action in action:
-            ship_num = int(atomic_action[1][-1])-1
+            for i, name in self.ship_to_index.items():
+                if atomic_action[1] == name:
+                    ship_num = i
+                    break
+            #ship_num = int(atomic_action[1][-1])-1
             if atomic_action[0] == "sail":
                 ships[ship_num] = atomic_action[2]
             if atomic_action[0] == "deposit":
@@ -73,7 +86,11 @@ class OnePieceProblem(search.Problem):
                         cur_treasure.remove(ship_num+1)
                     treasures_[i] = tuple(sorted(cur_treasure))
             if atomic_action[0] == "collect":
-                treasure_num = int(atomic_action[2][-1])-1
+                for i, name in self.treasure_to_index.items():
+                    if atomic_action[2] == name:
+                        treasure_num = i
+                        break
+                #treasure_num = int(atomic_action[2][-1])-1
                 new_treasure = list(treasures_[treasure_num])
                 new_treasure.append(ship_num+1)
                 if -1 in new_treasure:
@@ -112,8 +129,6 @@ class OnePieceProblem(search.Problem):
         return max(self.h2(node)*self.num_of_pirates, self.h4(node))
 
     def h4(self, node):
-        if self.check_impossible():
-            return float('inf')
         state = node.state
         ships = state[0]
         treasures_ = state[2]
@@ -130,7 +145,12 @@ class OnePieceProblem(search.Problem):
         uncollected_locations = []
         space_locations = []
         for name, loc in self.treasures:
-            if (int(name[-1]))-1 in uncollected:
+            cur_treasure = 0
+            for id_, name_ in self.treasure_to_index.items():
+                if name == name_:
+                    cur_treasure = id_
+                    break
+            if cur_treasure in uncollected:
                 uncollected_locations.append(loc)
 
         for i, loc in enumerate(ships):
@@ -145,44 +165,6 @@ class OnePieceProblem(search.Problem):
                     sum_of_dist += l1(self.base, loc) + min(l1(loc, ship) for ship in space_locations)
         return float(sum_of_dist)
 
-    def h3(self, node):
-        """ This is the heuristic. It gets a node (not a state,
-        state can be accessed via node.state)
-        and returns a goal distance estimate"""
-        if self.check_impossible():
-            return float('inf')
-        state = node.state
-        ships = state[0]
-        treasures_ = state[2]
-        sum_of_dist = 0
-        treasure_in_ships = [0]*len(ships)
-        uncollected = []
-        for i in range(len(treasures_)):
-            if 0 not in treasures_[i]:
-                if treasures_[i][0] != -1:
-                    for ship in treasures_[i]:
-                        treasure_in_ships[ship-1] += 1
-                else:
-                    uncollected.append(i)
-        uncollected_locations = []
-
-        for name, loc in self.treasures:
-            if (int(name[-1]))-1 in uncollected:
-                uncollected_locations.append(loc)
-        for i, treasure_amount in enumerate(treasure_in_ships):
-            if treasure_amount == 2 or (treasure_amount == 1 and len(uncollected) == 0):
-                sum_of_dist += l1(ships[i], self.base)
-            elif treasure_amount == 1:
-                if len(uncollected) > 0:
-                    dist_to_treasure = min(l1(ships[i], j)+l1(j, self.base) for j in uncollected_locations)
-                    if self.num_of_pirates == 1:
-                        sum_of_dist += dist_to_treasure
-                    else:
-                        sum_of_dist += min(dist_to_treasure, l1(self.base, ships[i]))
-            else:
-                if len(uncollected) > 0:
-                    sum_of_dist += min(l1(ships[i], j)+l1(j, self.base) for j in uncollected_locations)
-        return sum_of_dist
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
@@ -197,7 +179,7 @@ class OnePieceProblem(search.Problem):
         """ Sum of the distances from the pirate base to the closest sea
          cell adjacent to a treasure - for each treasure, divided by the
           number of pirates. If there is a treasure which all the adjacent cells are islands – return infinity. """
-        if self.check_impossible():
+        if self.impossible:
             return float('inf')
         state = node.state
         ships = state[0]
@@ -207,7 +189,12 @@ class OnePieceProblem(search.Problem):
             if 0 not in treasures_[i]:
                 if -1 in treasures_[i]:
                     for j in range(len(self.treasures)):
-                        if int(self.treasures[j][0][-1])-1 == i:
+                        cur_treasure = 0
+                        for id_, name in self.treasure_to_index.items():
+                            if self.treasures[j][0] == name:
+                                cur_treasure = id_
+                                break
+                        if cur_treasure == i:
                             check = []
                             loc = self.treasures[j][1]
                             if not loc[0] == 0:  # up
@@ -240,19 +227,19 @@ class OnePieceProblem(search.Problem):
         # sail actions
         if not loc[0] == 0:  # up
             if self.map[loc[0]-1][loc[1]] != 'I':
-                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]-1, loc[1]))
+                action = ("sail", self.ship_to_index[i], (loc[0]-1, loc[1]))
                 yield action
         if not loc[0] == len(self.map) - 1:  # down
             if self.map[loc[0]+1][loc[1]] != 'I':
-                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0]+1, loc[1]))
+                action = ("sail", self.ship_to_index[i], (loc[0]+1, loc[1]))
                 yield action
         if not loc[1] == 0:  # left
             if self.map[loc[0]][loc[1]-1] != 'I':
-                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]-1))
+                action = ("sail", self.ship_to_index[i], (loc[0], loc[1]-1))
                 yield action
         if not loc[1] == len(self.map[0]) - 1:  # right
             if self.map[loc[0]][loc[1]+1] != 'I':
-                action = ("sail", "pirate_ship_" + str(i + 1), (loc[0], loc[1]+1))
+                action = ("sail", self.ship_to_index[i], (loc[0], loc[1]+1))
                 yield action
 
         # collect actions
@@ -265,41 +252,52 @@ class OnePieceProblem(search.Problem):
                 space = False
                 break
         if space:
+
             for name, loc in self.treasures:
-                if i+1 in treasures_[int(name[-1])-1]:
+                next_iter = False
+                for j, name_ in self.treasure_to_index.items():
+                    if i+1 in treasures_[j] and name == name_:
+                        next_iter = True
+                        break
+                if next_iter:
                     continue
+                # if i+1 in treasures_[int(name[-1])-1]:
+                #     continue
                 if abs(ship[0] - loc[0]) == 1 and \
                         ship[1] - loc[1] == 0:
-                    action = ("collect", "pirate_ship_" + str(i + 1), name)
+                    action = ("collect", self.ship_to_index[i], name)
                     yield action
                 elif abs(ship[1] - loc[1]) == 1 and \
                         ship[0] - loc[0] == 0:
-                    action = ("collect", "pirate_ship_" + str(i + 1), name)
+                    action = ("collect", self.ship_to_index[i], name)
                     yield action
         # deposit and wait actions
         if ship[0] - self.base[0] == 0 and \
                 ship[1] - self.base[1] == 0:
-            action = ("deposit", "pirate_ship_" + str(i + 1))
+            for cur in treasures_:
+                if i+1 in cur:
+                    action = ("deposit", self.ship_to_index[i])
             yield action
-        action = ("wait", "pirate_ship_" + str(i + 1))
+        action = ("wait", self.ship_to_index[i])
         yield action
 
-    def check_impossible(self):
-        for name, loc in self.treasures:
-            if not loc[0] == 0:  # up
-                if self.map[loc[0] - 1][loc[1]] != 'I':
-                    continue
-            if not loc[0] == len(self.map) - 1:  # down
-                if self.map[loc[0] + 1][loc[1]] != 'I':
-                    continue
-            if not loc[1] == 0:  # left
-                if self.map[loc[0]][loc[1] - 1] != 'I':
-                    continue
-            if not loc[1] == len(self.map[0]) - 1:  # right
-                if self.map[loc[0]][loc[1] + 1] != 'I':
-                    continue
-            return True
-        return False
+
+def check_impossible(treasures, map_):
+    for name, loc in treasures:
+        if not loc[0] == 0:  # up
+            if map_[loc[0] - 1][loc[1]] != 'I':
+                continue
+        if not loc[0] == len(map_) - 1:  # down
+            if map_[loc[0] + 1][loc[1]] != 'I':
+                continue
+        if not loc[1] == 0:  # left
+            if map_[loc[0]][loc[1] - 1] != 'I':
+                continue
+        if not loc[1] == len(map_[0]) - 1:  # right
+            if map_[loc[0]][loc[1] + 1] != 'I':
+                continue
+        return True
+    return False
 
 
 def l1(a, b):
