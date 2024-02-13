@@ -132,9 +132,6 @@ def main():
             'marine_ships': {'marine_1': [(4, 1), (4, 2)], 'marine_2': [(3, 5), (3, 4), (4, 4)],
                              'marine_3': [(1, 2), (1, 3), (1, 4)], 'marine_4': [(5, 6)]},
         },
-    ]
-
-    problems_2 = [
         {
             "map": [
                 ['S', 'S', 'I', 'S', 'S', 'S'],
@@ -191,18 +188,16 @@ def main():
     ]
     my_problem = [
         {
-            "map": [
-                ['S', 'S', 'I', 'S', 'S', 'S'],
-                ['S', 'S', 'S', 'S', 'I', 'S'],
-                ['B', 'S', 'S', 'S', 'I', 'S'],
-                ['S', 'S', 'S', 'S', 'I', 'I']
-            ],
-            "pirate_ships": {"mango": (2, 0), "banana": (2, 0)},
-            "treasures": {'melon': (0, 2), 'devash': (3, 5)},
-            "marine_ships": {'marine_1': [(1, 1), (1, 2), (2, 2), (2, 1)], 'marine_2': [(2, 1)]}
+             'map': [['S', 'S', 'I', 'S'],
+                    ['S', 'B', 'S', 'S'],
+                    ['S', 'S', 'I', 'I'],
+                    ['S', 'S', 'I', 'I']],
+            'pirate_ships': {'pirate_ship_1': (1, 1)},
+            'treasures': {'treasure_1': (2, 2), 'treasure_2': (2, 2), 'treasure_3': (3, 3)},
+            'marine_ships': {'marine_1': [(0, 0), (0, 1), (0, 0), (1, 0), (2, 0)]}
         }
     ]
-    solve_problems(problems + problems_2)
+    solve_problems(problems)
 
 
 if __name__ == '__main__':

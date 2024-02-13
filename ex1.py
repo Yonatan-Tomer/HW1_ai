@@ -77,7 +77,7 @@ class OnePieceProblem(search.Problem):
             #ship_num = int(atomic_action[1][-1])-1
             if atomic_action[0] == "sail":
                 ships[ship_num] = atomic_action[2]
-            if atomic_action[0] == "deposit":
+            if atomic_action[0] == "deposit_treasures":
                 for i in range(len(treasures_)):
                     cur_treasure = list(treasures_[i])
                     if ship_num+1 in cur_treasure:
@@ -90,7 +90,6 @@ class OnePieceProblem(search.Problem):
                     if atomic_action[2] == name:
                         treasure_num = i
                         break
-                #treasure_num = int(atomic_action[2][-1])-1
                 new_treasure = list(treasures_[treasure_num])
                 new_treasure.append(ship_num+1)
                 if -1 in new_treasure:
@@ -126,6 +125,8 @@ class OnePieceProblem(search.Problem):
         return True
 
     def h(self, node):
+        if self.num_of_pirates == 1:
+            return self.h1(node)
         return max(self.h2(node)*self.num_of_pirates, self.h4(node))
 
     def h4(self, node):
@@ -165,6 +166,60 @@ class OnePieceProblem(search.Problem):
                     sum_of_dist += l1(self.base, loc) + min(l1(loc, ship) for ship in space_locations)
         return float(sum_of_dist)
 
+    def h3(self, node):
+        state = node.state
+        ships = state[0]
+        treasures_ = state[2]
+        sum_of_dist = 0
+        treasure_in_ships = [0] * len(ships)
+        uncollected = []
+        for i in range(len(treasures_)):
+            if 0 not in treasures_[i]:
+                if treasures_[i][0] != -1:
+                    for ship in treasures_[i]:
+                        treasure_in_ships[ship - 1] += 1
+                else:
+                    uncollected.append(i)
+        uncollected_locations = []
+        space_locations = []
+        empty_locations = []
+        for name, loc in self.treasures:
+            cur_treasure = 0
+            for id_, name_ in self.treasure_to_index.items():
+                if name == name_:
+                    cur_treasure = id_
+                    break
+            if cur_treasure in uncollected:
+                uncollected_locations.append(loc)
+        for i, loc in enumerate(ships):
+            treasure_in_ship = treasure_in_ships[i]
+            if treasure_in_ship == 2 or (treasure_in_ship == 1 and len(uncollected) == 0):
+                sum_of_dist += l1(self.base, ships[i])
+            else:
+                if treasure_in_ship == 1:
+                    space_locations.append(loc)
+                if treasure_in_ship == 0:
+                    empty_locations.append(loc)
+
+        all_locations = space_locations+empty_locations
+        if len(uncollected) > 0:
+            for loc in uncollected_locations:
+                if len(space_locations) > 0:
+                    min_value = len(self.map) + len(self.map[0])
+                    min_index = -1
+                    for i, ship in enumerate(all_locations):
+                        cur_dist = l1(loc, ship)
+                        if min_value > cur_dist:
+                            min_value = cur_dist
+                            min_index = i
+                    sum_of_dist += min_value + l1(self.base, loc)
+                    if min_index < len(space_locations):
+                        space_locations.pop(min_index)
+                    else:
+                        empty_locations.pop(min_index - len(space_locations))
+                        space_locations.append(all_locations[min_index])
+                    all_locations = space_locations+empty_locations
+        return float(sum_of_dist)
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
@@ -276,7 +331,7 @@ class OnePieceProblem(search.Problem):
                 ship[1] - self.base[1] == 0:
             for cur in treasures_:
                 if i+1 in cur:
-                    action = ("deposit", self.ship_to_index[i])
+                    action = ("deposit_treasures", self.ship_to_index[i])
             yield action
         action = ("wait", self.ship_to_index[i])
         yield action
