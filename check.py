@@ -61,7 +61,7 @@ def solve_problems(problems):
             print("Error creating problem: ", e)
             raise e
             return None
-        timeout = 120
+        timeout = 300
         result = check_problem(
             p, (lambda p: search.astar_search(p, p.h)), timeout)
         print("A* ", result)
@@ -188,18 +188,18 @@ def main():
     ]
     my_problem = [
 
-             {
-                'map': [['S', 'S', 'I', 'S'],
-                        ['S', 'B', 'S', 'S'],
-                        ['S', 'S', 'I', 'I'],
-                        ['S', 'S', 'I', 'I']],
-                'pirate_ships': {'pirate_ship_1': (1, 1)},
-                'treasures': {'treasure_1': (2, 2), 'treasure_2': (2, 2), 'treasure_3': (3, 3)},
-                'marine_ships': {'marine_1': [(0, 0), (0, 1), (0, 0), (1, 0), (2, 0)]}
-            },
+        {
+            'map': [['S', 'S', 'S', 'S', 'I'],
+                    ['S', 'I', 'S', 'S', 'S'],
+                    ['S', 'S', 'S', 'S', 'S'],
+                    ['B', 'S', 'S', 'I', 'S']],
+            'pirate_ships': {'pirate_ship_1': (3, 0), 'pirate_ship_2': (3, 0)},
+            'treasures': {'treasure_1': (1, 1), 'treasure_2': (3, 3)},
+            'marine_ships': {'marine_1': [(3, 2), (2, 2), (2, 3), (2, 4)]}
+        },
 
     ]
-    solve_problems(my_problem)
+    solve_problems(problems)
 
 
 if __name__ == '__main__':

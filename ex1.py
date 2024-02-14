@@ -126,9 +126,10 @@ class OnePieceProblem(search.Problem):
         return True
 
     def h(self, node):
+        return self.h3(node)
         if self.num_of_pirates == 1:
             return self.h1plus(node)
-        return max(self.h2plus(node), self.h4(node))
+        return self.h2plus(node)
 
     def h4(self, node):
         state = node.state
@@ -158,7 +159,7 @@ class OnePieceProblem(search.Problem):
         for i, loc in enumerate(ships):
             treasure_in_ship = treasure_in_ships[i]
             if treasure_in_ship == 2 or (treasure_in_ship == 1 and len(uncollected) == 0):
-                sum_of_dist += l1(self.base, ships[i])
+                sum_of_dist += l1(self.base, ships[i])+1
             else:
                 space_locations.append(loc)
         if len(uncollected) > 0:
@@ -168,59 +169,38 @@ class OnePieceProblem(search.Problem):
         return float(sum_of_dist)
 
     def h3(self, node):
+        if self.impossible:
+            return float("inf")
         state = node.state
         ships = state[0]
         treasures_ = state[2]
-        sum_of_dist = 0
-        treasure_in_ships = [0] * len(ships)
-        uncollected = []
-        for i in range(len(treasures_)):
-            if 0 not in treasures_[i]:
-                if treasures_[i][0] != -1:
-                    for ship in treasures_[i]:
-                        treasure_in_ships[ship - 1] += 1
-                else:
-                    uncollected.append(i)
-        uncollected_locations = []
-        space_locations = []
-        empty_locations = []
-        for name, loc in self.treasures:
-            cur_treasure = 0
-            for id_, name_ in self.treasure_to_index.items():
-                if name == name_:
-                    cur_treasure = id_
-                    break
-            if cur_treasure in uncollected:
-                uncollected_locations.append(loc)
-        for i, loc in enumerate(ships):
-            treasure_in_ship = treasure_in_ships[i]
-            if treasure_in_ship == 2 or (treasure_in_ship == 1 and len(uncollected) == 0):
-                sum_of_dist += l1(self.base, ships[i])
+        dist_to_base = []
+        for i, treasure in enumerate(treasures_):
+            if 0 in treasure:
+                continue
+            check = []
+            if -1 in treasure:
+                loc = self.treasures[i][1]
+                if not loc[0] == 0:  # up
+                    if self.map[loc[0] - 1][loc[1]] == 'S':
+                        check.append((loc[0] - 1, loc[1]))
+                if not loc[0] == len(self.map) - 1:  # down
+                    if self.map[loc[0] + 1][loc[1]] == 'S':
+                        check.append((loc[0] + 1, loc[1]))
+                if not loc[1] == 0:  # left
+                    if self.map[loc[0]][loc[1] - 1] == 'S':
+                        check.append((loc[0], loc[1] - 1))
+                if not loc[1] == len(self.map[0]) - 1:  # right
+                    if self.map[loc[0]][loc[1] + 1] == 'S':
+                        check.append((loc[0], loc[1] + 1))
             else:
-                if treasure_in_ship == 1:
-                    space_locations.append(loc)
-                if treasure_in_ship == 0:
-                    empty_locations.append(loc)
-
-        all_locations = space_locations+empty_locations
-        if len(uncollected) > 0:
-            for loc in uncollected_locations:
-                if len(space_locations) > 0:
-                    min_value = len(self.map) + len(self.map[0])
-                    min_index = -1
-                    for i, ship in enumerate(all_locations):
-                        cur_dist = l1(loc, ship)
-                        if min_value > cur_dist:
-                            min_value = cur_dist
-                            min_index = i
-                    sum_of_dist += min_value + l1(self.base, loc)
-                    if min_index < len(space_locations):
-                        space_locations.pop(min_index)
-                    else:
-                        empty_locations.pop(min_index - len(space_locations))
-                        space_locations.append(all_locations[min_index])
-                    all_locations = space_locations+empty_locations
-        return float(sum_of_dist)
+                for j in treasure:
+                    check.append(ships[j-1])
+            dist_to_base.append(min(self.distances[self.base][place] for place in check))
+        dist_to_base = sorted(dist_to_base, reverse=True)
+        if len(dist_to_base) > self.num_of_pirates:
+            return sum(dist_to_base[:self.num_of_pirates]) + self.num_of_pirates
+        return sum(dist_to_base) + 1
 
     def h1(self, node):
         """ number of uncollected treasures divided by number of pirates"""
@@ -330,7 +310,7 @@ class OnePieceProblem(search.Problem):
                             if not loc[1] == len(self.map[0]) - 1:  # right
                                 if self.map[loc[0]][loc[1]+1] == 'S':
                                     check.append((loc[0], loc[1]+1))
-                            sum_of_dist += min(self.distances[self.base][k] for k in check)
+                            sum_of_dist += min(self.distances[self.base][k] for k in check)+1
                 else:
                     check = []
                     for j in range(len(treasures_[i])):
@@ -347,7 +327,7 @@ class OnePieceProblem(search.Problem):
                         if not loc[1] == len(self.map[0]) - 1:  # right
                             if self.map[loc[0]][loc[1] + 1] == 'S':
                                 check.append((loc[0], loc[1] + 1))
-                    sum_of_dist += min(self.distances[self.base][k] for k in check)
+                    sum_of_dist += min(self.distances[self.base][k] for k in check)+1
         return float(sum_of_dist)/self.num_of_pirates
 
 
@@ -393,8 +373,6 @@ class OnePieceProblem(search.Problem):
                         break
                 if next_iter:
                     continue
-                # if i+1 in treasures_[int(name[-1])-1]:
-                #     continue
                 if abs(ship[0] - loc[0]) == 1 and \
                         ship[1] - loc[1] == 0:
                     action = ("collect", self.ship_to_index[i], name)
