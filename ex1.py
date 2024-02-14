@@ -109,7 +109,7 @@ class OnePieceProblem(search.Problem):
                     for k in range(len(treasures_)):
                         if i+1 in treasures_[k]:
                             lost_treasure = list(treasures_[k])
-                            if len(lost_treasure) == 1:
+                            if len(lost_treasure) == 1 and 0 not in lost_treasure:
                                 lost_treasure.append(-1)
                             lost_treasure.remove(i+1)
                             treasures_[k] = tuple(sorted(lost_treasure))
@@ -127,7 +127,7 @@ class OnePieceProblem(search.Problem):
     def h(self, node):
         if self.num_of_pirates == 1:
             return self.h1(node)
-        return max(self.h2(node)*self.num_of_pirates, self.h4(node))
+        return max(self.h2(node), self.h4(node))
 
     def h4(self, node):
         state = node.state
@@ -264,12 +264,12 @@ class OnePieceProblem(search.Problem):
                             if not loc[1] == len(self.map[0]) - 1:  # right
                                 if self.map[loc[0]][loc[1]+1] == 'S':
                                     check.append((loc[0], loc[1]+1))
-                            sum_of_dist += min(l1(self.base, k) for k in check)
+                            sum_of_dist += min(l1(self.base, k) for k in check) + 1
 
                 elif len(treasures_[i]) == 1:
-                    sum_of_dist += l1(ships[treasures_[i][0]-1], self.base)
+                    sum_of_dist += l1(ships[treasures_[i][0]-1], self.base) + 1
                 elif len(treasures_[i]) > 1:
-                    sum_of_dist += min(l1(ships[k-1], self.base) for k in treasures_[i])
+                    sum_of_dist += min(l1(ships[k-1], self.base) for k in treasures_[i]) + 1
         return float(sum_of_dist)/self.num_of_pirates
 
 
