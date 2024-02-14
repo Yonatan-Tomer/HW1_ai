@@ -59,6 +59,7 @@ def solve_problems(problems):
             p = ex1.create_onepiece_problem(problem)
         except Exception as e:
             print("Error creating problem: ", e)
+            raise e
             return None
         timeout = 120
         result = check_problem(
@@ -186,17 +187,19 @@ def main():
         },
     ]
     my_problem = [
-        {
-             'map': [['S', 'S', 'I', 'S'],
-                    ['S', 'B', 'S', 'S'],
-                    ['S', 'S', 'I', 'I'],
-                    ['S', 'S', 'I', 'I']],
-            'pirate_ships': {'pirate_ship_1': (1, 1)},
-            'treasures': {'treasure_1': (2, 2), 'treasure_2': (2, 2), 'treasure_3': (3, 3)},
-            'marine_ships': {'marine_1': [(0, 0), (0, 1), (0, 0), (1, 0), (2, 0)]}
-        }
+
+             {
+                'map': [['S', 'S', 'I', 'S'],
+                        ['S', 'B', 'S', 'S'],
+                        ['S', 'S', 'I', 'I'],
+                        ['S', 'S', 'I', 'I']],
+                'pirate_ships': {'pirate_ship_1': (1, 1)},
+                'treasures': {'treasure_1': (2, 2), 'treasure_2': (2, 2), 'treasure_3': (3, 3)},
+                'marine_ships': {'marine_1': [(0, 0), (0, 1), (0, 0), (1, 0), (2, 0)]}
+            },
+
     ]
-    solve_problems(problems)
+    solve_problems(my_problem)
 
 
 if __name__ == '__main__':

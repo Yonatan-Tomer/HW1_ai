@@ -415,27 +415,26 @@ class OnePieceProblem(search.Problem):
 
 
 def check_impossible(treasures, map_, distances, base):
-    impossible = False
     for name, loc in treasures:
         if not loc[0] == 0:  # up
             if map_[loc[0] - 1][loc[1]] != 'I':
                 continue
-            if distances[base][map_[loc[0] - 1][loc[1]]] < float("inf"):
+            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0] - 1, loc[1])] < float("inf"):
                 continue
         if not loc[0] == len(map_) - 1:  # down
             if map_[loc[0] + 1][loc[1]] != 'I':
                 continue
-            if distances[base][map_[loc[0] + 1][loc[1]]] < float("inf"):
+            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0] + 1, loc[1])] < float("inf"):
                 continue
         if not loc[1] == 0:  # left
             if map_[loc[0]][loc[1] - 1] != 'I':
                 continue
-            if distances[base][map_[loc[0]][loc[1]-1]] < float("inf"):
+            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0], loc[1]-1)] < float("inf"):
                 continue
         if not loc[1] == len(map_[0]) - 1:  # right
-            if map_[loc[0]][loc[1] + 1] != 'I':
+            if map_[loc[0] - 1][loc[1]] == 'S' and map_[loc[0]][loc[1] + 1] != 'I':
                 continue
-            if distances[base][map_[loc[0]][loc[1]+1]] < float("inf"):
+            if distances[base][(loc[0], loc[1]+1)] < float("inf"):
                 continue
         return True
     return False
