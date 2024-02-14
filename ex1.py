@@ -20,7 +20,7 @@ class OnePieceProblem(search.Problem):
             for j, loc in enumerate(row):
                 if loc == "B":
                     self.base = (i, j)
-        self.ship_to_index = {}
+        self.ship_to_index = {}  # convert ship names and treasure names to indexes
         self.treasure_to_index = {}
         self.map = initial["map"]  # map as is in initial
         self.pirates = initial["pirate_ships"]
@@ -32,7 +32,7 @@ class OnePieceProblem(search.Problem):
         for i, item in enumerate(self.treasures):
             self.treasure_to_index[i] = item[0]
         marines = list(initial["marine_ships"].values())
-        for i in range(len(marines)):
+        for i in range(len(marines)):  # fix marines route so its circular
             if len(marines[i]) > 1:
                 ret_path = []
                 for j in marines[i][-2:0:-1]:
@@ -43,8 +43,8 @@ class OnePieceProblem(search.Problem):
         pirate_state = tuple(self.pirates.values())
         treasure_state = tuple((-1,) for i in range(len(self.treasures)))
         initial_state = (pirate_state, marines_state, treasure_state)
-        self.distances = floyd_warshall(self.map)
-        self.impossible = check_impossible(self.treasures, self.map, self.distances, self.base)
+        self.distances = floyd_warshall(self.map)  # implemented least distance matrix
+        self.impossible = check_impossible(self.treasures, self.map)
         search.Problem.__init__(self, initial_state)
         
     def actions(self, state):
@@ -57,7 +57,7 @@ class OnePieceProblem(search.Problem):
         generators = []
         for i in range(len(ships)):
             generators.append(self.atomic_action(i, ships[i], treasures_))
-
+        #  cartesean product of atomic actions
         for action in itertools.product(*generators):
             yield action
 
@@ -71,13 +71,16 @@ class OnePieceProblem(search.Problem):
         treasures_ = list(list_state[2])
         ship_num = 0
         treasure_num = 0
+        # convert name to index
         for atomic_action in action:
             for i, name in self.ship_to_index.items():
                 if atomic_action[1] == name:
                     ship_num = i
                     break
+            #  change location
             if atomic_action[0] == "sail":
                 ships[ship_num] = atomic_action[2]
+            # deposit: remove info about ship carrying treasure
             if atomic_action[0] == "deposit_treasures":
                 for i in range(len(treasures_)):
                     cur_treasure = list(treasures_[i])
@@ -86,6 +89,7 @@ class OnePieceProblem(search.Problem):
                             cur_treasure.append(0)
                         cur_treasure.remove(ship_num+1)
                     treasures_[i] = tuple(sorted(cur_treasure))
+            # add information about ship carrying treasure
             if atomic_action[0] == "collect":
                 for i, name in self.treasure_to_index.items():
                     if atomic_action[2] == name:
@@ -96,14 +100,14 @@ class OnePieceProblem(search.Problem):
                 if -1 in new_treasure:
                     new_treasure.remove(-1)
                 treasures_[treasure_num] = tuple(sorted(new_treasure))
-
+        # advance marine ships
         for i in range(len(self.marine_ships)):
             if marines[i] == len(self.marine_ships[i])-1:
                 marines[i] = 0
             else:
                 loc = marines[i]
                 marines[i] = loc+1
-
+        # check if marines removes treasure
         for i in range(len(ships)):
             for j in range(len(marines)):
                 if self.marine_ships[j][marines[j]] == ships[i]:
@@ -120,16 +124,16 @@ class OnePieceProblem(search.Problem):
     def goal_test(self, state):
         """ Given a state, checks if this is the goal state.
          Returns True if it is, False otherwise."""
+        # if every treasure is in base
         for places in state[2]:
             if 0 not in places:
                 return False
         return True
 
     def h(self, node):
-        return self.h3(node)
         if self.num_of_pirates == 1:
             return self.h1plus(node)
-        return self.h2plus(node)
+        return max(self.h3(node), self.h4(node))
 
     def h4(self, node):
         state = node.state
@@ -159,7 +163,7 @@ class OnePieceProblem(search.Problem):
         for i, loc in enumerate(ships):
             treasure_in_ship = treasure_in_ships[i]
             if treasure_in_ship == 2 or (treasure_in_ship == 1 and len(uncollected) == 0):
-                sum_of_dist += l1(self.base, ships[i])+1
+                sum_of_dist += l1(self.base, ships[i])
             else:
                 space_locations.append(loc)
         if len(uncollected) > 0:
@@ -169,12 +173,14 @@ class OnePieceProblem(search.Problem):
         return float(sum_of_dist)
 
     def h3(self, node):
+        # distance of the num of pirates farthest treasures
         if self.impossible:
             return float("inf")
         state = node.state
         ships = state[0]
         treasures_ = state[2]
         dist_to_base = []
+        uncollected = 0
         for i, treasure in enumerate(treasures_):
             if 0 in treasure:
                 continue
@@ -330,11 +336,8 @@ class OnePieceProblem(search.Problem):
                     sum_of_dist += min(self.distances[self.base][k] for k in check)+1
         return float(sum_of_dist)/self.num_of_pirates
 
-
-    """Feel free to add your own functions
-    (-2, -2, None) means there was a timeout"""
-
     def atomic_action(self, i, ship, treasures_):
+        # returns all actions for a singles ship
         loc = ship
         # sail actions
         if not loc[0] == 0:  # up
@@ -392,37 +395,31 @@ class OnePieceProblem(search.Problem):
         yield action
 
 
-def check_impossible(treasures, map_, distances, base):
+def check_impossible(treasures, map_):
+    # check if there is no way to retrieve all the treasures
     for name, loc in treasures:
         if not loc[0] == 0:  # up
             if map_[loc[0] - 1][loc[1]] != 'I':
                 continue
-            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0] - 1, loc[1])] < float("inf"):
-                continue
         if not loc[0] == len(map_) - 1:  # down
             if map_[loc[0] + 1][loc[1]] != 'I':
-                continue
-            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0] + 1, loc[1])] < float("inf"):
                 continue
         if not loc[1] == 0:  # left
             if map_[loc[0]][loc[1] - 1] != 'I':
                 continue
-            if map_[loc[0] - 1][loc[1]] == 'S' and distances[base][(loc[0], loc[1]-1)] < float("inf"):
-                continue
         if not loc[1] == len(map_[0]) - 1:  # right
-            if map_[loc[0] - 1][loc[1]] == 'S' and map_[loc[0]][loc[1] + 1] != 'I':
-                continue
-            if distances[base][(loc[0], loc[1]+1)] < float("inf"):
+            if map_[loc[0]][loc[1] + 1] != 'I':
                 continue
         return True
     return False
 
 
-def l1(a, b):
+def l1(a, b):  # manhattan distance
     xa, ya = a
     xb, yb = b
     dist = abs(xa-xb)+abs(ya-yb)
     return dist
+
 
 def floyd_warshall(map):
     dist = {} # matrix of distances from points on the map
