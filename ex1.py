@@ -5,6 +5,7 @@ import random
 import math
 
 
+
 ids = ["325028967", "213125164"]
 
 
@@ -42,7 +43,8 @@ class OnePieceProblem(search.Problem):
         pirate_state = tuple(self.pirates.values())
         treasure_state = tuple((-1,) for i in range(len(self.treasures)))
         initial_state = (pirate_state, marines_state, treasure_state)
-        self.impossible = check_impossible(self.treasures, self.map)
+        self.distances = floyd_warshall(self.map)
+        self.impossible = check_impossible(self.treasures, self.map, self.distances, self.base)
         search.Problem.__init__(self, initial_state)
         
     def actions(self, state):
@@ -74,7 +76,6 @@ class OnePieceProblem(search.Problem):
                 if atomic_action[1] == name:
                     ship_num = i
                     break
-            #ship_num = int(atomic_action[1][-1])-1
             if atomic_action[0] == "sail":
                 ships[ship_num] = atomic_action[2]
             if atomic_action[0] == "deposit_treasures":
@@ -126,8 +127,8 @@ class OnePieceProblem(search.Problem):
 
     def h(self, node):
         if self.num_of_pirates == 1:
-            return self.h1(node)
-        return max(self.h2(node), self.h4(node))
+            return self.h1plus(node)
+        return max(self.h2plus(node), self.h4(node))
 
     def h4(self, node):
         state = node.state
@@ -230,6 +231,17 @@ class OnePieceProblem(search.Problem):
                 counter += 1
         return float(counter) / self.num_of_pirates
 
+    def h1plus(self, node):
+        """ number of uncollected treasures divided by number of pirates"""
+        treasures_ = node.state[2]
+        counter = 0.0
+        for treasure in treasures_:
+            if -1 in treasure:
+                counter += 1.5
+            elif 0 not in treasure:
+                counter += 0.5
+        return float(counter)
+
     def h2(self, node):
         """ Sum of the distances from the pirate base to the closest sea
          cell adjacent to a treasure - for each treasure, divided by the
@@ -264,14 +276,79 @@ class OnePieceProblem(search.Problem):
                             if not loc[1] == len(self.map[0]) - 1:  # right
                                 if self.map[loc[0]][loc[1]+1] == 'S':
                                     check.append((loc[0], loc[1]+1))
-                            sum_of_dist += min(l1(self.base, k) for k in check) + 1
-
-                elif len(treasures_[i]) == 1:
-                    sum_of_dist += l1(ships[treasures_[i][0]-1], self.base) + 1
-                elif len(treasures_[i]) > 1:
-                    sum_of_dist += min(l1(ships[k-1], self.base) for k in treasures_[i]) + 1
+                            sum_of_dist += min(l1(self.base, k) for k in check)
+                else:
+                    check = []
+                    for j in range(len(treasures_[i])):
+                        loc = ships[treasures_[i][j]-1]
+                        if not loc[0] == 0:  # up
+                            if self.map[loc[0] - 1][loc[1]] == 'S':
+                                check.append((loc[0] - 1, loc[1]))
+                        if not loc[0] == len(self.map) - 1:  # down
+                            if self.map[loc[0] + 1][loc[1]] == 'S':
+                                check.append((loc[0] + 1, loc[1]))
+                        if not loc[1] == 0:  # left
+                            if self.map[loc[0]][loc[1] - 1] == 'S':
+                                check.append((loc[0], loc[1] - 1))
+                        if not loc[1] == len(self.map[0]) - 1:  # right
+                            if self.map[loc[0]][loc[1] + 1] == 'S':
+                                check.append((loc[0], loc[1] + 1))
+                    sum_of_dist += min(l1(self.base, k) for k in check)
         return float(sum_of_dist)/self.num_of_pirates
 
+    def h2plus(self, node):
+        """ Sum of the distances from the pirate base to the closest sea
+         cell adjacent to a treasure - for each treasure, divided by the
+          number of pirates. If there is a treasure which all the adjacent cells are islands – return infinity. """
+        if self.impossible:
+            return float('inf')
+        state = node.state
+        ships = state[0]
+        treasures_ = state[2]
+        sum_of_dist = 0
+        for i in range(len(treasures_)):
+            if 0 not in treasures_[i]:
+                if -1 in treasures_[i]:
+                    for j in range(len(self.treasures)):
+                        cur_treasure = 0
+                        for id_, name in self.treasure_to_index.items():
+                            if self.treasures[j][0] == name:
+                                cur_treasure = id_
+                                break
+                        if cur_treasure == i:
+                            check = []
+                            loc = self.treasures[j][1]
+                            if not loc[0] == 0:  # up
+                                if self.map[loc[0]-1][loc[1]] == 'S':
+                                    check.append((loc[0]-1, loc[1]))
+                            if not loc[0] == len(self.map) - 1:  # down
+                                if self.map[loc[0]+1][loc[1]] == 'S':
+                                    check.append((loc[0]+1, loc[1]))
+                            if not loc[1] == 0:  # left
+                                if self.map[loc[0]][loc[1]-1] == 'S':
+                                    check.append((loc[0], loc[1]-1))
+                            if not loc[1] == len(self.map[0]) - 1:  # right
+                                if self.map[loc[0]][loc[1]+1] == 'S':
+                                    check.append((loc[0], loc[1]+1))
+                            sum_of_dist += min(self.distances[self.base][k] for k in check)
+                else:
+                    check = []
+                    for j in range(len(treasures_[i])):
+                        loc = ships[treasures_[i][j]-1]
+                        if not loc[0] == 0:  # up
+                            if self.map[loc[0] - 1][loc[1]] == 'S':
+                                check.append((loc[0] - 1, loc[1]))
+                        if not loc[0] == len(self.map) - 1:  # down
+                            if self.map[loc[0] + 1][loc[1]] == 'S':
+                                check.append((loc[0] + 1, loc[1]))
+                        if not loc[1] == 0:  # left
+                            if self.map[loc[0]][loc[1] - 1] == 'S':
+                                check.append((loc[0], loc[1] - 1))
+                        if not loc[1] == len(self.map[0]) - 1:  # right
+                            if self.map[loc[0]][loc[1] + 1] == 'S':
+                                check.append((loc[0], loc[1] + 1))
+                    sum_of_dist += min(self.distances[self.base][k] for k in check)
+        return float(sum_of_dist)/self.num_of_pirates
 
 
     """Feel free to add your own functions
@@ -337,19 +414,28 @@ class OnePieceProblem(search.Problem):
         yield action
 
 
-def check_impossible(treasures, map_):
+def check_impossible(treasures, map_, distances, base):
+    impossible = False
     for name, loc in treasures:
         if not loc[0] == 0:  # up
             if map_[loc[0] - 1][loc[1]] != 'I':
                 continue
+            if distances[base][map_[loc[0] - 1][loc[1]]] < float("inf"):
+                continue
         if not loc[0] == len(map_) - 1:  # down
             if map_[loc[0] + 1][loc[1]] != 'I':
+                continue
+            if distances[base][map_[loc[0] + 1][loc[1]]] < float("inf"):
                 continue
         if not loc[1] == 0:  # left
             if map_[loc[0]][loc[1] - 1] != 'I':
                 continue
+            if distances[base][map_[loc[0]][loc[1]-1]] < float("inf"):
+                continue
         if not loc[1] == len(map_[0]) - 1:  # right
             if map_[loc[0]][loc[1] + 1] != 'I':
+                continue
+            if distances[base][map_[loc[0]][loc[1]+1]] < float("inf"):
                 continue
         return True
     return False
@@ -359,6 +445,33 @@ def l1(a, b):
     xa, ya = a
     xb, yb = b
     dist = abs(xa-xb)+abs(ya-yb)
+    return dist
+
+def floyd_warshall(map):
+    dist = {} # matrix of distances from points on the map
+    # create main dict keys
+    for i in range(len(map)):
+        for j in range(len(map[i])):
+            if map[i][j] != 'I':
+                dist[(i, j)] = {}
+    # init distances
+    for start in dist:
+        i,j = start
+        for end in dist:
+            k,l = end
+            dist[start][end] = float('inf')
+            if i == k:
+                if j == l:
+                    dist[start][end] = 0
+                elif l == j+1 or l == j-1:
+                    dist[start][end] = 1
+            elif j == l and (k == i+1 or k == i-1):
+                dist[start][end] = 1
+    for point1 in dist:
+        for point2 in dist:
+            for point3 in dist:
+                if dist[point2][point3] > dist[point2][point1] + dist[point1][point3]:
+                    dist[point2][point3] = dist[point2][point1] + dist[point1][point3]
     return dist
 
 

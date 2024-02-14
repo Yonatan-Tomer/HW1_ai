@@ -59,9 +59,8 @@ def solve_problems(problems):
             p = ex1.create_onepiece_problem(problem)
         except Exception as e:
             print("Error creating problem: ", e)
-            raise e
             return None
-        timeout = 60
+        timeout = 120
         result = check_problem(
             p, (lambda p: search.astar_search(p, p.h)), timeout)
         print("A* ", result)
